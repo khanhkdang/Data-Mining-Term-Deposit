@@ -1,0 +1,780 @@
+---
+title: "BA636_Project_Hien Do & Khanh Dang"
+output: html_document
+---
+
+```{r setup, include=TRUE, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(here)
+library(ggmosaic)
+library(jwutil)
+library(kableExtra)
+library(readxl)
+library(ggplot2)
+library(forecast)
+library(igraph)
+library(treemap)
+library(ggmap)
+library(mosaic)
+library(gplots)
+library(reshape)
+library(RColorBrewer)
+library(GGally)
+library(scales)
+library(MASS)
+library(gains)
+library(caret)
+library(kableExtra)
+library(arsenal)
+library(leaps)
+library(e1071)
+library(plotrix)
+library(readr)
+library(ggplot2)
+library(tidyr)
+library(tidyverse)
+library(dplyr)
+library(forecast)
+library(kableExtra)
+library(effects)
+library(lmtest)
+library(car)
+library(broom)
+library(plotrix)
+library(caret)
+library(gains)
+library(FNN)
+library(e1071)
+bank.df<-readr::read_csv('../../Selected dataset/bank-additional-full.csv')
+data.dictionary<-read_xlsx('../Data_Dictionary.xlsx')
+```
+
+### **Data Dictionary**
+
+```{r, message=FALSE, warning=FALSE}
+data.dictionary%>%kable(caption = "Table: Data Dictionary of Term Deposit File")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+
+### **1. Looking at the data**
+
+```{r}
+kbl(dim(bank.df))
+head(bank.df, 10)%>%kable(caption = "Table: Ten fisrt rows of bank data")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+kbl(str(bank.df))%>%
+  kable_styling()
+```
+
+### **2.Summary Statistics of numerical variables and missing values**
+
+```{r}
+numerical.variables<-c(1,11,12,13,14,16,17,18,19,20)
+table.summary<-data.frame(mean=sapply(bank.df[,numerical.variables], mean),sd=sapply(bank.df[,numerical.variables], sd), min=sapply(bank.df[,numerical.variables],min), max=sapply(bank.df[,numerical.variables],max), median=sapply(bank.df[,numerical.variables],median))
+table.missing<-data.frame(miss.val=sapply(bank.df, function(x)
+  sum(length(which(is.na(x))))))
+table.summary%>%kable(caption = "Table: Summary Statistic of all numerical variables")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+table.missing%>%kable(caption = "Table: Number of missing values")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+### **3. Understanding data by visualization**
+
+*Categorized variables*
+
+```{r, message=FALSE, warning=FALSE}
+par(mfrow=c(1,3))
+ggplot(bank.df, aes(x=bank.df$job))+
+  geom_histogram(fill = "cadetblue", stat = "count")+
+  ggtitle("Figure: The Job of Customer")+
+  labs(x = "Job")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+ggplot(bank.df, aes(x=bank.df$marital))+
+  geom_histogram(fill = "lightblue", stat = "count")+
+  ggtitle("Figure: The Marital Status of Customer")+
+  labs(x = "Marital Status")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+ggplot(bank.df, aes(x=bank.df$education))+
+  geom_histogram(fill = "cadetblue", stat = "count")+
+  ggtitle("Figure: The Education of Customer")+
+  labs(x = "Education Status")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+```{r,message=FALSE, warning=FALSE}
+par(mfrow=c(1,2))
+ggplot(bank.df, aes(x=bank.df$default))+
+  geom_histogram(fill = "lightblue", stat = "count")+
+  ggtitle("Figure: The Default of customer")+
+  labs(x = "Default")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+ggplot(bank.df, aes(x=bank.df$housing))+
+  geom_histogram(fill = "lightblue", stat = "count")+
+  ggtitle("Figure: The Housing Loan of customer")+
+  labs(x = "Housing Loan")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+```{r, message=FALSE, warning=FALSE}
+par(mfrow=c(1,3))
+ggplot(bank.df, aes(x=bank.df$loan))+
+  geom_histogram(fill = "cadetblue", stat = "count")+
+  ggtitle("Figure: The Loan of Banking File")+
+  labs(x = "Loan")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+ggplot(bank.df, aes(x=bank.df$contact))+
+  geom_histogram(fill = "lightblue", stat = "count")+
+  ggtitle("Figure: The Contact type")+
+  labs(x = "Contact type")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+ggplot(bank.df, aes(x=bank.df$month))+
+  geom_histogram(fill = "cadetblue", stat = "count")+
+  ggtitle("Figure: The last contact month of the year")+
+  labs(x = "Months")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+
+*Numeric Variables*
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(bank.df, aes(y, age))+
+  geom_boxplot() +
+  ggtitle("Figure: Term Deposit Selection based on the age")+
+  labs(x = "Term Deposit Selection", y="Age")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+**The relation of each predictor on the other**
+
+```{r, message=FALSE,warning=FALSE}
+ggplot(data=bank.df)+geom_bar(aes(x=job, fill= as.factor(marital)))+
+  theme_minimal()+
+  ggtitle(label = "Figure: The marital status and job")+
+  scale_fill_brewer(palette="Paired")+
+   theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(data=bank.df)+geom_bar(aes(x=education, fill= as.factor(loan)))+
+  theme_minimal()+
+  ggtitle(label = "Figure: Customer education and current personal loan product")+
+  scale_fill_brewer(palette="GnBu")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(data=bank.df)+geom_bar(aes(x=job, fill= as.factor(loan)))+
+  theme_minimal()+
+  ggtitle(label = "Figure: Customer job and personal loan product")+
+  scale_fill_brewer(palette="GnBu")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(data=bank.df)+geom_bar(aes(x=education, fill= as.factor(housing)))+
+  ggtitle(label = "Figure: Customer education and housing loan product")+
+  theme_minimal()+
+  scale_fill_brewer(palette="Paired")+
+  theme(axis.text.x=element_text(angle=45, hjust =1))
+```
+
+**Bar charts and distribution plots to summarize data**
+
+```{r}
+# Compute number of customer decision in the data
+count.decision<-aggregate(bank.df$y, by=list(bank.df$y), FUN=count)
+names(count.decision)<-c("Term Deposit", "Count")
+ggplot(data=count.decision, mapping = aes(x=`Term Deposit`, y=`Count`))+geom_col(color="plum2", fill="plum2") + ggtitle("Figure: Frequency of customer decision")
+# Number of previous outcome
+ggplot(data=bank.df, mapping=aes(x=poutcome))+geom_bar(colour="firebrick2", alpha=0.7, fill="firebrick2") + ggtitle("Figure: Frequency of previous outcome campaign")
+```
+
+```{r}
+bank.df[,-c(1,13)]%>%keep(is.numeric)%>%gather()%>%ggplot(aes(value))+facet_wrap(~key, scales = "free")+geom_histogram(bins=30)
+```
+
+**Understand data by multidimensional visualization**
+
+```{r}
+# Compute mean of Duration per Y = Yes, No
+data.duration<-aggregate(bank.df$duration, by=list(bank.df$y), FUN=mean)
+names(data.duration)<-c("Term Deposit","Avg Duration")
+ggplot(data=data.duration, mapping=aes(x=`Term Deposit`, y=`Avg Duration`))+geom_col(color="pink", fill="pink", alpha=0.7) + ggtitle("Figure: The effect of duration on term deposit")
+# Compute mean of campaign per Y =Yes, No
+data.campaign<-aggregate(bank.df$campaign, by=list(bank.df$y), FUN=mean)
+names(data.campaign)<-c("Term Deposit", "Avg Campaign")
+ggplot(data=data.campaign, mapping=aes(x=`Term Deposit`, y=`Avg Campaign`)) + geom_col(color="deepskyblue2", fill="deepskyblue2", alpha=0.7) + ggtitle("Figure: The effect of Campaign on Term Deposit")
+# The effect of number of contacts performed before this campaign and this client by panel plot
+data.previous<-aggregate(bank.df$previous, by=list(bank.df$y, bank.df$previous), FUN=count)
+names(data.previous)<-c("Term Deposit", "Previous", "Count")
+par(mfcol=c(2,1))
+barplot(height = data.previous$Count[data.previous$`Term Deposit`=="yes"], names.arg=data.previous$Previous[data.previous$`Term Deposit`=="yes"], xlab="Previous", ylab="Count", main = "Term Deposit = Yes")
+barplot(height = data.previous$Count[data.previous$`Term Deposit`=="no"], names.arg=data.previous$Previous[data.previous$`Term Deposit`=="no"], xlab="Previous", ylab="Count", main = "Term Deposit = No")
+# The effect of previous outcome marketing campaign on term deposit
+data.poutcome<-aggregate(bank.df$poutcome, by=list(bank.df$y, bank.df$poutcome), FUN = count)
+names(data.poutcome)<-c("Term Deposit", "Previous Marketing Campaign" ,"Count")
+par(mfrow=c(2,1))
+barplot(height = data.poutcome$Count[data.poutcome$`Term Deposit`=="yes"], names.arg = data.poutcome$`Previous Marketing Campaign`[data.poutcome$`Term Deposit`=="yes"], xlab="Previous outcome campaign", ylab="Count", main="Term Deposit = Yes")
+barplot(height = data.poutcome$Count[data.poutcome$`Term Deposit`=="no"], names.arg = data.poutcome$`Previous Marketing Campaign`[data.poutcome$`Term Deposit`=="no"], xlab="Previous outcome campaign", ylab="Count", main="Term Deposit = No")
+```
+
+```{r}
+# Scatter plot of confident indext and price index of each customer
+ggplot(data=bank.df, aes(y=cons.price.idx,x=cons.conf.idx, color=y)) + geom_point() +ggtitle("Figure: The relationship between confident index and price index by term deposit")
+# Scatter plot of duration and campaign of each customer
+ggplot(data=bank.df, aes(x=campaign, y=duration, color=y)) + geom_point() + ggtitle ("Figure: The relationship between campaign and duration by term deposit")
+```
+
+**Sid-by-Side Boxplot of euribor3m and nr.employed on term deposit**
+
+```{r}
+par(mfcol=c(1,2))
+boxplot(bank.df$euribor3m~bank.df$y, xlab="Term Deposit", ylab="Euribor3m")
+boxplot(bank.df$nr.employed~bank.df$y, xlab = "Term Deposit", ylab="Number of employees")
+```
+
+**Heatmap and correlation matrix for correlations**
+
+```{r}
+cor.mat<-round(cor(bank.df[,numerical.variables]),2)
+cor.mat%>%kable(caption = "Table: Correlation matrix of numerical variables")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+melted.cor.mat<-melt(cor.mat)
+names(melted.cor.mat)<-c("X1", "X2", "value")
+ggplot(melted.cor.mat, aes(x=X1, y=X2, fill=value)) + geom_tile(col="black") + geom_text(aes(x=X1, y=X2, label=value))
+```
+
+### **4. Cleaning data**
+
+**Unknow variable**
+
+```{r, message=FALSE, warning=FALSE}
+# The proportion of Term Deposit with all unknown records
+unknown.term<-group_by(bank.df, y)
+unknown.term<-summarise(unknown.term,count=n())
+unknown.term$count<-as.numeric(unknown.term$count)
+unknown.term<-mutate(unknown.term, percent=count/sum(count))
+unknown.term%>%kable(caption="Table: The proportion of yes and no with all unknown observations")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# The proportion of Term Deposit without unknown observations
+bank.df2<-filter(bank.df, job!="unknown", marital!="unknown",education!="unknown", default!="unknown", housing!="unknown")
+nonunknown.term<-group_by(bank.df2,y)
+nonunknown.term<-summarise(nonunknown.term,count=n())
+nonunknown.term$count<-as.numeric(nonunknown.term$count)
+nonunknown.term<-mutate(nonunknown.term, percent=count/sum(count))
+nonunknown.term%>%kable(caption="Table: The proportion of yes and no with without unknown observations")%>%kableExtra::kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+dim(bank.df2)
+head(bank.df2, 10)%>%kable(caption = "Table: Bank dataset without unknown observations")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+**Job variable**
+
+```{r, message=FALSE, warning=FALSE}
+bank.df2$job[bank.df2$job=="entrepreneur"] <- "self-employed"
+bank.df2$job[bank.df2$job=="housemaid"] <-"blue-collar"
+bank.df2$job[bank.df2$job=="admin."] <-"white-collar"
+bank.df2$job[bank.df2$job=="management"] <-"white-collar"
+bank.df2$job[bank.df2$job=="services"] <-"white-collar"
+bank.df2$job[bank.df2$job=="technician"] <-"white-collar"
+bank.df2$job[bank.df2$job=="housemaid"] <-"blue-collar"
+bank.df2$job[bank.df2$job=="student"]<- "unemployed"
+```
+
+```{r}
+table(bank.df2$job)%>%kable(caption="Table: Checking job variable")%>%kableExtra::kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+**Education variable**
+
+```{r, message=FALSE, warning=FALSE}
+bank.df2$education[bank.df2$education=="illiterate"]<- "below high-school"
+bank.df2$education[bank.df2$education=="basic.4y"]<- "below high-school"
+bank.df2$education[bank.df2$education=="basic.6y"]<- "below high-school"
+bank.df2$education[bank.df2$education=="basic.9y"]<- "below high-school"
+```
+
+```{r}
+table(bank.df2$education)%>%kable(caption= "Table: Checking education variable")%>%kableExtra::kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+**Month varible**
+
+```{r, message=FALSE, warning=FALSE}
+bank.df2$month<-ifelse(bank.df2$month=="mar", "spring", ifelse(bank.df2$month=="apr"|bank.df2$month=="may"|bank.df2$month=="jun", "summer", ifelse(bank.df2$month=="jul"|bank.df2$month=="aug"|bank.df2$month=="sep", "fall", "winter")))
+```
+
+```{r}
+table(bank.df2$month)%>%kable(caption = "Table: Checking month")%>%kableExtra::kable_styling(bootstrap_options = "striped", full_width = FALSE)
+```
+
+**pdays variable**
+
+```{r, message=FALSE, warning=FALSE}
+hist(bank.df2$pdays,main = "Figure: Histogram of the number of contacting days from last campaign", xlab="pdays")
+```
+
+```{r, message=FALSE, warning=FALSE}
+bank.df2$pdays[bank.df2$pdays==999]<- 0
+bank.df2$pdays<-as.numeric(bank.df2$pdays)
+hist(bank.df2$pdays,main = "Figure: Checking the number of contacting days from last campaign", xlab="pdays")
+```
+
+### **5. Data Dimension and varibles selection**
+
+#### **Categorical varibles**
+
+**The effect of job type on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+job.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$job), mean)
+names(job.agg)<-c("job", "values")
+ggplot(data = job.agg, mapping = aes(x=job, y=values)) + geom_col(fill="orchid", alpha=0.7) + theme (axis.text.x=element_text(angle = 45, hjust = 1)) + ggtitle("Figure: The effect of Job on Term Deposit")
+```
+
+**The effect of marital on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+married.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$marital), mean)
+names(married.agg)<-c("married", "values")
+ggplot(data = married.agg, mapping = aes(x=married, y=values)) + geom_col(fill="lightyellow3", alpha=0.7) + ggtitle("Figure: The effect of marital on Term Deposit")
+```
+
+**The effect of education on term deposit**
+
+```{r, message=FALSE, warning=FALSE}
+education.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$education), mean)
+names(education.agg)<-c("education", "values")
+ggplot(data = education.agg, mapping = aes(x=education, y=values)) + geom_col(fill="pink3", alpha=0.7) + theme (axis.text.x=element_text(angle = 45, hjust = 1)) + ggtitle("Figure: The effect of Education on Term Deposit")
+```
+
+**The effect of default on term deposit**
+
+```{r, message=FALSE, warning=FALSE}
+default.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$default), mean)
+names(default.agg)<-c("default", "values")
+ggplot(data = default.agg, mapping = aes(x=default, y=values)) + geom_col(fill="slateblue3", alpha=0.7) + ggtitle("Figure: The effect of Default on Term Deposit")
+```
+
+**The effect of housing loan on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+housingloan.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$housing), mean)
+names(housingloan.agg)<-c("housing", "values")
+ggplot(data = housingloan.agg, mapping = aes(x=housing, y=values)) + geom_col(fill="firebrick2", alpha=0.7) + ggtitle("Figure: The effect of housing loan on Term Deposit")
+```
+
+
+**The effect of personal loan on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+loan.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$loan), mean)
+names(loan.agg)<-c("loan", "values")
+ggplot(data = loan.agg, mapping = aes(x=loan, y=values)) + geom_col(fill="blue", alpha=0.7) + ggtitle("Figure: The effect of personal loan on Term Deposit")
+```
+
+**The effect of contact type on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+contact.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$contact), mean)
+names(contact.agg)<-c("contact", "values")
+ggplot(data = contact.agg, mapping = aes(x=contact, y=values)) + geom_col(fill="slategray4", alpha=0.7) + ggtitle("Figure: The effect of Contact Type on Term Deposit")
+```
+
+**The effect of month on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+month.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$month), mean)
+names(month.agg)<-c("month", "values")
+ggplot(data=month.agg, mapping = aes(x=month, y=values)) + geom_col(fill="mediumpurple", alpha=0.7) + ggtitle("Figure: The effect of Month on Term Deposit")
+```
+
+**The effect of day of week on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+day.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$day_of_week), mean)
+names(day.agg)<-c("day", "values")
+ggplot(data=day.agg, mapping = aes(x=day, y=values)) + geom_col(fill="blue4", alpha=0.7) + ggtitle("Figure: The effect of Day of week  on Term Deposit")
+```
+
+**The effect of poutcome on Term deposit decision**
+
+```{r, message=FALSE, warning=FALSE}
+poutcome.agg<-aggregate(bank.df2$y=="yes", by=list(bank.df2$poutcome), mean)
+names(poutcome.agg)<-c("poutcome", "values")
+ggplot(data=poutcome.agg, mapping = aes(x=poutcome, y=values)) + geom_col(fill="tan2", alpha=0.7) + ggtitle("Figure: The effect of Poutcome on Term Deposit")
+```
+
+**Checking correlation of job and education**
+
+*By visualization*
+
+```{r, message=FALSE, warning=FALSE}
+job.edu<-group_by(bank.df2, job, education)
+job.edu<-summarise(job.edu, n=n())
+ggplot(job.edu, aes(x=job, y=n))+geom_col(aes(fill=education), position = "dodge")+theme(axis.text.x=element_text(angle=45, hjust =1))+
+  scale_fill_brewer(palette="Paired")+ylab("The number of people")+ggtitle("Figure: The customer job and education")
+```
+
+*By correlation matrix*
+
+```{r}
+edu.job2<-bank.df2[,c(2,4)]
+edu.job2$job<-ifelse(edu.job2$job=="retired",1,ifelse(edu.job2$job=="unemployed",2,ifelse(edu.job2$job=="blue-collar",3,ifelse(edu.job2$job=="self-employed",4,5))))
+edu.job2$education<-ifelse(edu.job2$education=="below high school",1,ifelse(edu.job2$education=="high.school",2,ifelse(edu.job2$education=="university.degree",3,4)))
+cor(edu.job2)%>%kable(caption = "Table: Correlation matrix of job and education")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+#### **Numerical variables**
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(data=bank.df2, aes(y=pdays,x=previous, color=y)) + geom_point() + ggtitle("Figure: effect of pdays and previous on term deposit")
+```
+
+**Export bank.df2 for project update 4 and for cleaned data to submit**
+
+```{r}
+write_excel_csv(bank.df2, "C:/Users/kieuk/OneDrive/Documents/BA636 Data Mining/PROJECT/Project update/Cleaned banking data/cleaneddata.csv")
+```
+
+### **6. Oversampling and partitioning data into training and validation dataset**
+
+```{r, message=FALSE, warning=FALSE}
+# Transforming term deposit into 0,1 y creating new variable
+bank.df2<-mutate(bank.df2, isyes=ifelse(bank.df2$y=="yes",1,0))
+#separate data
+term.yes<-filter(bank.df2, y=="yes")
+term.no<-filter(bank.df2, y=="no")
+# partitioning data
+set.seed(2)
+train.yes.row<-sample(c(1:3859), dim(term.yes)*0.5)
+train.yes<-term.yes[train.yes.row,]
+valid.yes<-term.yes[-train.yes.row,]
+train.no.row<-sample(c(1:26629), dim(term.yes)*0.5)
+train.no<-term.no[train.no.row,]
+training.bank.df<-rbind(train.yes, train.no)
+valid.no.row<-sample(setdiff(rownames(term.no), train.no.row), 0.87*1930/0.13)
+valid.no<-term.no[valid.no.row,]
+validation.bank.df<-rbind(valid.yes, valid.no)
+# Checking again
+training.checking<-group_by(training.bank.df, y)
+training.checking<-summarise(training.checking, count=n())
+validation.checking<-group_by(validation.bank.df, y)
+validation.checking<-summarise(validation.checking, count=n())
+validation.checking<-mutate(validation.checking, percent=count/sum(count))
+training.checking%>%kable(caption="Table: Checking training set after oversampling")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+validation.checking%>%kable(caption = "Table: Checking validation after oversampling")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+### **7. Building logistic regression model on training dataset**
+
+#### **Model 1: All predictors as I mentioned above except for emp.var.rate to avoid multicollinearity**
+
+**Original model**
+```{r}
+mod1<-glm(isyes~job + marital + education + contact+ month + poutcome + duration + campaign+ euribor3m+nr.employed, data = training.bank.df, family = binomial(link="logit"))
+summary(mod1)
+```
+
+**Model with forward selection**
+```{r}
+mod1.forward<-step(mod1,direction = "forward")
+summary(mod1.forward)
+```
+
+```{r}
+accuracy(mod1.forward)
+```
+
+**Model with backward elimination**
+```{r}
+mod1.backward<-step(mod1, direction="backward")
+summary(mod1.backward)
+```
+
+```{r}
+accuracy(mod1.backward)
+```
+
+**Model with stepwise regression**
+```{r}
+mod1.step<-step(mod1, direction = "both")
+summary(mod1.step)
+```
+
+```{r}
+accuracy(mod1.step)
+```
+
+
+#### **Model 2: All predictors as I mentioned above except for euribor3m and nr.employed to void multicollinearity**
+
+**Original model**
+```{r, message=FALSE, warning = FALSE}
+mod2<-glm(isyes~job + marital + education + contact+ month + poutcome + duration + campaign+ emp.var.rate, data = training.bank.df, family = binomial(link="logit"))
+summary(mod2)
+```
+
+**Model with forward selection**
+```{r, message=FALSE, warning=FALSE}
+mod2.forward<-step(mod2,direction = "forward")
+summary(mod2.forward)
+```
+
+```{r}
+accuracy(mod2.forward)
+```
+
+**Model with backward elimination**
+```{r}
+mod2.backward<-step(mod2, direction="backward")
+summary(mod2.backward)
+```
+
+```{r}
+accuracy(mod2.backward)
+```
+
+**Model with stepwise regression**
+```{r, message=FALSE, warning=FALSE}
+mod2.step<-step(mod2, direction = "both")
+summary(mod2.step)
+```
+
+```{r}
+accuracy(mod2.step)
+```
+
+#### **8. Evaluating model on validation dataset**
+
+**MODEL 1: The predictors: Job, Education, Month, Poutcome, Duration, Euribor3m and nr.employed**
+
+```{r, message=FALSE, warning=FALSE}
+# Using training data to predict the probability in validation dataset
+mod1.backward.pred<-predict(mod1.backward, validation.bank.df, type = "response")
+data.frame('actual' = validation.bank.df[,21], "probability" = mod1.backward.pred)%>%head(10)%>%kable(caption = "Table: Customer's propensity on Term Deposit")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Using cutoff figure to select the best cutoff value
+accT = c()
+for (cut in seq(0,1,0.1)){
+cm <- confusionMatrix(factor(ifelse(mod1.backward.pred> cut,1,0)), factor(validation.bank.df$isyes))
+accT = c(accT, cm$overall[1])
+}
+plot(accT ~ seq(0,1,0.1),main="Figure: Plotting of accuracy and overall error", xlab = "Cutoff Value", ylab = "", type = "l", ylim = c(0, 1))
+lines(1-accT ~ seq(0,1,0.1), type = "l", lty = 2, col="blue")
+legend("bottomright", c("accuracy", "overall error"), lty = c(1, 2), merge = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+kbl(data.frame(Actual=validation.bank.df$y[1:6], Predicted= mod1.backward.pred[1:6]), caption = "Table: The prediction of backward model 1")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Confusion matrix with cutoff value of 0.85
+mod1.conf<-confusionMatrix(factor(ifelse(mod1.backward.pred >0.85,1,0)), factor(validation.bank.df$isyes))
+mod1.conf$table%>%kable(caption="Table: Confusion matrix of model 1 at cutoff value 0.85")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# The accuracy rate
+mod1.conf$overall[1]
+```
+
+**MODEL 2: The predictors: Job, Education, Conact type, Month, Poutcome, Duration and Emp.var.rate**
+
+```{r, message=FALSE, warning=FALSE}
+# Using training data to predict probability in validation dataset
+mod2.backward.pred<-predict(mod2.backward, validation.bank.df, type="response")
+data.frame('actual' = validation.bank.df[,21], "probability" = mod2.backward.pred)%>%head(10)%>%kable(caption = "Table: Customer's propensity on Term Deposit")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Using cutoff figure to select the best cutoff value
+accT2 = c()
+for (cut in seq(0,1,0.1)){
+cm <- confusionMatrix(factor(ifelse(mod2.backward.pred> cut,1,0)), factor(validation.bank.df$isyes))
+accT2 = c(accT2, cm$overall[1])
+}
+plot(accT2 ~ seq(0,1,0.1),main="Figure: Plotting of accuracy and overall error", xlab = "Cutoff Value", ylab = "", type = "l", ylim = c(0, 1))
+lines(1-accT2 ~ seq(0,1,0.1), type = "l", lty = 2, col="blue")
+legend("bottomleft", c("accuracy", "overall error"), lty = c(1, 2), merge = TRUE)
+```
+
+```{r, message=FALSE, warning=FALSE}
+kbl(data.frame(Actual=validation.bank.df$y[1:6], Predicted= mod2.backward.pred[1:6]), caption = "Table: The prediction of backward model 2")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Confusion matrix with cutoff value of 0.85
+mod2.conf<-confusionMatrix(factor(ifelse(mod2.backward.pred >0.85,1,0)), factor(validation.bank.df$isyes))
+mod2.conf$table%>%kable(caption="Table: Confusion matrix of model 1 at cutoff value 0.85")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# The accuray rate
+mod2.conf$overall[1]
+```
+
+#### **9. Judging ranking performance of model 1**
+
+**Lift chart**
+
+```{r, message=FALSE, warning=FALSE}
+gain<-gains(validation.bank.df$isyes, mod1.backward.pred, groups = length(mod1.backward.pred))
+plot(c(0,gain$cume.pct.of.total*sum(validation.bank.df$isyes))~c(0, gain$cume.obs), xlab="# Cases", ylab="Cumulative", main = "Figure: Lift chart of customer's propensity ranking", type="l")
+lines(c(0,sum(validation.bank.df$isyes))~c(0,dim(validation.bank.df)[1]), lty=2)
+```
+
+**Decile chart**
+
+```{r, message=FALSE, warning=FALSE}
+decile.data<-data.frame("actual" = validation.bank.df$isyes, "probability" = mod1.backward.pred)
+gain.mod1<-gains(decile.data$actual, decile.data$probability)
+midpoints.mod1 <-barplot(gain.mod1$mean.resp/mean(decile.data$actual), names.arg= gain.mod1$depth, ylim = c(0,6),
+xlab = "Percentile", ylab = "Mean Response Yes", main = "Figure: Decile-wise lift chart")
+text(midpoints.mod1, gain.mod1$mean.resp/mean(decile.data$actual)+0.5, labels=round(gain.mod1$mean.resp/mean(decile.data$actual), 1), cex = 1)
+```
+
+### **Case: Predicting the number of customers who will purchase term deposit is more important**
+
+```{r, message=FALSE, warning=FALSE}
+# At cutoff value: 0.5
+mod1.conf1<-confusionMatrix(factor(ifelse(mod1.backward.pred >0.5,1,0)), factor(validation.bank.df$isyes))
+mod1.conf1$table%>%kable(caption="Table: Confusion matrix of model 1 at cutoff value 0.85")%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r}
+# The accuracy rate
+mod1.conf1$overall[1]
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Plotting the relationship between sensitivity and cutoff value
+accuracy1 = c()
+sensitivity1 = c ()
+for (cut in seq(0,1,0.1)){
+mod1.conf.matrix <- confusionMatrix(factor(ifelse(mod1.backward.pred >cut,1,0)), factor(validation.bank.df$isyes))
+accuracy1 = c(accuracy1, mod1.conf.matrix$overall[1])
+sensitivity1=c(sensitivity1, mod1.conf.matrix$byClass[2])
+}
+plot(accuracy1 ~ seq(0,1,0.1),main="Figure: Plotting of accuracy and percentage", xlab = "Cutoff Value", ylab = "", type = "l", ylim = c(0, 1))
+lines(sensitivity1 ~ seq(0,1,0.1), type = "l", lty = 2, col="blue")
+legend("bottomleft", c("accuracy", "percentage"), lty = c(1, 2), merge = TRUE)
+```
+
+### **10. K-Nearest Neighbors (k-NN)**
+
+```{r, message=FALSE, warning=FALSE}
+# Creating knn dataset with selected predictors: job, eduation, month, contact type, poutcome, duration, euribor3m, and nr.employed
+knn.df<-bank.df2[,c(2,4,9,11,15,19,20,21,22)]
+# Converting Categorical Variables to Binary Dummies
+knn.df<-fastDummies::dummy_cols(knn.df, select_columns = "job")
+knn.df<-fastDummies::dummy_cols(knn.df, select_columns = "education")
+knn.df<-fastDummies::dummy_cols(knn.df, select_columns = "month")
+knn.df<-fastDummies::dummy_cols(knn.df, select_columns = "poutcome")
+# Partitioning data into 60% training set and 40% validation set
+set.seed(5)
+train.knn.index<-sample(row.names(knn.df), 0.6*dim(knn.df)[1])
+valid.knn.index<-setdiff(row.names(knn.df), train.knn.index)
+train.knn<-knn.df[train.knn.index,]
+valid.knn<-knn.df[valid.knn.index,]
+# Normalizing duration, euribor3m, nr.employed
+train.knn.normalized<-train.knn
+valid.knn.normalized<-valid.knn
+normalized.values<-preProcess(knn.df[,c(4,6,7)], method=c("center", "scale"))
+train.knn.normalized[,c(4,6,7)]<-predict(normalized.values, train.knn[,c(4,6,7)])
+valid.knn.normalized[,c(4,6,7)]<-predict(normalized.values, valid.knn[,c(4,6,7)])
+```
+
+**Running KNN algorithm with different K values**
+
+```{r, message=FALSE, warning=FALSE}
+accuracy.df<-data.frame(k=seq(1,14,1), accuracy=rep(0,14))
+select.variable<-c(4,6,7,10:25)
+# Computing knn for different k on validation dataset
+for (i in 1:14) {
+  knn.prediction<-knn(train.knn.normalized[,select.variable], valid.knn.normalized[,select.variable], cl=train.knn.normalized$isyes, k = i)
+  accuracy.df[i,2]<-confusionMatrix(factor(knn.prediction), factor(valid.knn.normalized$isyes))$overall[1]
+}
+accuracy.df%>%kable(caption="Table: accuracy rate at different K values", digits=3)%>%kableExtra::kable_styling(bootstrap_options = "striped")
+```
+
+```{r, message=FALSE, warning=FALSE}
+# Confusion matrix at k = 13
+knn.prediction.13<-knn(train.knn.normalized[,select.variable], valid.knn.normalized[,select.variable], cl=train.knn.normalized$isyes, k = 13)
+confusionMatrix(factor(knn.prediction.13), factor(valid.knn.normalized$isyes))
+```
+
+### **11. Naive Bayes Classifier for categorical predictors**
+
+```{r, message=FALSE, warning=FALSE}
+# Creating Naivee Bayes dataset
+naive.df<-bank.df2[,c(2,4,9,11,15,19,20,21,22)]
+# Creating bin and Changing numerical variables to factor
+naive.df$isyes<-factor(naive.df$isyes)
+naive.df$duration<-factor(round(naive.df$duration/100))
+naive.df$euribor3m<-factor(round(naive.df$euribor3m))
+naive.df$nr.employed<-factor(round(naive.df$nr.employed))
+# Partitioning data into 60% training data and 40% validation data
+set.seed(3)
+train.naive.index<-sample(row.names(naive.df), 0.6*dim(naive.df)[1])
+valid.naive.index<-setdiff(row.names(naive.df), train.naive.index)
+train.naive<-naive.df[train.naive.index,]
+valid.naive<-naive.df[valid.naive.index,]
+```
+
+**Running Naive Bayes algorithm**
+
+```{r, message=FALSE, warning=FALSE}
+isyes.naive<-naiveBayes(isyes~.-y, data=train.naive)
+isyes.naive
+```
+
+**Predicting probabilities and class membership on validation data**
+
+```{r, message=FALSE, warning=FALSE}
+# Predicting probabilities
+pred.naive.prob<-predict(isyes.naive, newdata = valid.naive[,-8], type="raw")
+# Predicting class membership
+pred.naive.class<-predict(isyes.naive, newdata = valid.naive[,-8])
+```
+
+**Evaluating Naive Bayes model by confusion matrix**
+
+```{r, message=FALSE, warning=FALSE}
+confusionMatrix(factor(pred.naive.class), factor(valid.naive$isyes))
+```
+
+#### **In conclusion**
+
+**1. For mail goal: finding the best predictive model**
+
+- Case 1: When we are not concerning about the important class, the KNN model (the predictors: job, education, month, duration, poutcome, euribor3m and nr.employed) with k=13 is the best predictive model with accuracy rate at 90%.
+
+- Case 2: When we are more intersted in finding the model which can predict the highest number of customer who will be willing to purchase term deposit. The model 1 backward elimination with predictors: job, education, month, duration, poutcome, euribor3m and nr.employed with cutoff value at 0.5, the percentage of customers who are correctly classified as buying term deposit is 85.75%.
+
+**2. For ranking goal:**
+
+We can see the model 1. backward elimination does good job in finding certain percentage of customers who are most likely to purchase term deposit compare to random selection. In particular, the first bar chart showing that for the first 10% of observations, we are getting more than 5 times in terms of a response (customer will buy term deposit) as well as just random assignment. it is more clear in the lift chart, if we select top 10% (1,484) customers with the highest probability of buying term deposit, the number of customers who will buy term deposit can be 945 customers (curve line). If we select 10% customers randomly, the number of customers who will buy term deposit is 192 customers (line-base)
+
+**3. For profiling goal**: We are more intersted in fining out which factors are associated with customer's decision on buying term deposit, and for those factors we would like to quantify these factors. Therfore, we will find the model that can fit the data best basing on Deviance. It appears that model 2.forward selection with preditors: job, marital status, education, contact type, month, poutcome, duration, campaign, and emp.var.rate is the best model with the lowest residual deviance (2717) and the lowest RMSE (0.3229). In particular,
+
+The coefficients of unemployed is 0.83, e^0.83 = 2.29 (>1) are the odds of unemployment customers on buying term deposit. This means that the unemployment customers are more likely to purchase term deposit than blue-collar customers. Likewise, the coefficient of retired customers is positive (>0) that means the retired customers are more likety to purchase term deposit than blue-coller customers (holding other predictors constant)
+
+The p-values of self-employed customers and white-collar customers are insignificant that means the probability of self-employed and white-collar customers on buying term deposit is not statistically significant when compared to the probability of blue-collar customers on buying term deposit.
+
+The coefficient of customers who have university degree is 0.507 which is the highest and greater than 0, that means university customers have the highest probability of purchasing term deposit comparing to other different educational customers (holding other predictor constant).
+
+The coefficient of emp.var.rate is -0.941 (numerical variable) => e^-0.941 = 0.39 are the odds of employment variation rate of customers buying term deposit, that means e^-0.941 = 0.39 are the multiplicative factor by which odds of customers buying term deposit will decrease when the employment variation rate increases by 1 unit. In other words, the Beta of emp.var.rate < 0 (negative) => the odds of buying term deposit less than 1, it indicates that the higher employment variation rate, the lower probability of buying term deposit.
+
+Likewise to other predictors, we figure out that factors that are associated with buying term deposit is the customers who are retired, have the university degree, have successful outcome in previous campaign and the bank should contact them in spring, they are the most likely to buy term deposit.
+
+## R Markdown
+
+
