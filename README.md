@@ -10,3 +10,16 @@ Data Mining Techniques Applied: Logistic Regression, K-Nearest Neighbors, Naive 
 
 # FILES:
 
+bank-additional-full (CSV File): Raw Data 
+
+cleaneddata (CSV File): Cleaned data with data dimension
+
+Data Dictionary (Excel File)
+
+R_Code (R Markdown File): R Code for Visualization, Analysis and Data Mining Techniques
+
+R_Code (HTML File): R Code for Visualization, Analysis and Data Mining Techniques
+
+Term Deposit - Presentation (pptx File): Slides for presentation
+
+Term Deposit - Report (Word Document File): Detail Report
