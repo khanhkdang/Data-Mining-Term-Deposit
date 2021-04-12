@@ -1,1 +1,1 @@
-# Data-Mining-Term-Deposit
+# Data Mining: Term Deposit
