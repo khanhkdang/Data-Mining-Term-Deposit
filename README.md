@@ -1,4 +1,4 @@
-# DATA MINING: TERM DEPOSIT - USING R
+# DaTa Mining: Term Deposit - Using R
 
 The project is to use data mining techniques to perform analysis and predict whether clients will decide to subscribe the term deposit or not based on factors. Other two goals are finding a certain percentage of customers who are most likely to invest on term deposit (ranking goals), and profiling term deposit: finding out which factors are assoicated with term deposit.
 
